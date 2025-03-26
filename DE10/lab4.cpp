@@ -63,7 +63,8 @@ int main() {
             buffer[bytes_received] = '\0'; // Null-terminate the received data if needed
 
             // Extract `messageID` (first 4 bytes)
-			std::memcpy(&integerValue, &buffer[0], sizeof(uint32_t));			
+			uint32_t messageId;
+			std::memcpy(&messageId, &buffer[0], sizeof(uint32_t));			
 			switch (messageId){
 				case 0x11:
 				
