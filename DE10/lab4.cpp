@@ -9,8 +9,12 @@
 #include <cstdlib> // For std::memcpy
 #include <unordered_map>
 
+
 cv::Mat imageBase, imageOverlay;
-int32_t brightness,contrast,mode=-1;
+int32_t brightness=0,contrast=99;
+uint32_t command=0;
+std::vector<double> histogram(256, 0.0);
+double pixel_scale;
 
 struct Packet {
     uint32_t sequenceNumber;
@@ -18,22 +22,121 @@ struct Packet {
     uint32_t dataSize;
     std::vector<char> data; // Data payload
 };
-
 std::unordered_map<uint32_t, std::map<uint32_t, Packet>> messages;
 
+/**
+*	------------------------------------
+ *	sets the program mode
+ *	0x1001 is baseImage display
+ *	0x1002 is modeOverlay
+ *	0x2001 is modeBrightnessContrast
+ *	------------------------------------
+ */
 void setMode(uint32_t command)
 {
 	mode = command;
+	updateOutput();
 }
 
+void updateOutput()
+{
+	switch(command){
+		case 0x1001:
+		cv::imshow("Overlay Disabled", baseImage);
+		break;
+		case 0x1002:
+		generateOverlayImage();
+		break;
+		case 0x2001:
+		generateBrightnessContrastImage();'
+		break;
+}
+/**
+ *	------------------------------------
+ *	uses baseImage, overlayImage
+ *	overlays 
+ */	
+void generateOverlayImage()
+{
+    if (baseImage.empty() || overlayImage.empty()) {
+        std::cerr << "Error: Could not load one of the images!" << std::endl;
+        return;
+    }
+	// do not modify output and overlay
+	cv::Mat output = baseImage.clone();
+	cv::Mat overlay = overlayImage.clone();
+	
+	// crop overlay if larger than base
+	int rows = std::min(output.rows, overlay.rows);
+	int cols = std::min(output.cols, overlay.cols);
+	cv::Mat overlay = overlay(cv::Rect(0, 0, cols, rows));
+	
+	// select overlay region of base image
+	cv::Mat output = output(cv::Rect(0, 0, cols, rows));
+	int alpha = 1; // just slap the overlay on top
+	cv::addWeighted(overlay, alpha, roi, 1.0 - alpha, 0.0, output);
+	cv::imshow("Overlay Result", output);
+    waitKey();
+}
+
+/**
+ *	------------------------------------
+ *	Uses baseImage, brightness, contrast
+ *	performs histogram equalization
+ *	contrast is the equalization range
+ *	brightness is added to pixel values
+ *	image is displayed on DE10
+ *	------------------------------------
+ */
 void modeBrightnessContrast()
 {
+    if (baseImage.empty() {
+        std::cerr << "Error: Could not load image!" << std::endl;
+        return;
+    }
+	cv::Mat output = baseImage.clone();
 	
-}
+	int rows = base.rows;
+	int cols = base.cols;
 
-void modeOverlay()
-{
+    //innitialize histogram for new image
+    histogram.fill(0,256);
+    pixel_scale = 1.0 /(rows * width);
+
+    for(int x = 0; x < width; x++)
+    {
+        for(int y = 0; y < rows; y++)
+        {
+            // vector stores count of pixel with index value
+            int i = base_image.pixelIndex(x,y);
+            histogram[i]++;
+        }
+    }
+
+    int sum = 0;
+    for(int i = 0; i < 256; i++)
+    {
+        // resolve histogram equalization
+        sum += histogram.at(i);
+        histogram.replace(i,(brightness + sum * contrast * 1.0 / width / rows));
+    }
+
+    for(int x = 0; x < width; x++)
+    {
+        for(int y = 0; y < rows; y++)
+        {
+            // pixel value at a coordinate is an index
+            // value at index is the replacement value for that pixel
+            int temp = base_image.pixelIndex(x,y);
+            temp = histogram.at(temp);
+            temp = qBound(0,temp,255);
+            output_image.setPixel(x,y,temp);
+        }
+    }
+
+    // display file
 	
+	cv::imshow("Histogram Result", output);
 }
 
 void receivePackets(uint32_t messageId, const Packet& packet) {

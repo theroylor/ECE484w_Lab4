@@ -3,10 +3,10 @@
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
     , udpSocket(new QUdpSocket(this))
     , udpServerIP("192.168.1.9") // DE10’s IP address
     , udpServerPort(5005)
+    , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
 }
