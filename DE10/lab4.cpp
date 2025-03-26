@@ -88,6 +88,7 @@ cv::Mat constructGrayscaleImage(std::vector<char> data)
     if (image.empty()) {
          throw std::runtime_error("Error: Could not decode image from char array!")
     }
+	return image;
 }
 
 int32_t constructInt32_t(std::vector<char> data)
@@ -123,14 +124,14 @@ void setContrast(uint32_t data)
 	contrast = data;
 	updateOutput();
 }
-void setImageBase()
+void setImageBase(cv::Mat image)
 {
-	imageBase.
+	imageBase = image;
 	updateOutput();
 }
-void setImageOverlay()
+void setImageOverlay(cv::Mat image)
 {
-	//command = data;
+	imageOverlay = image;
 	updateOutput();
 }
 

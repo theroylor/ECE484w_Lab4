@@ -5,6 +5,7 @@
 #include <QFileDialog>
 #include <QtGlobal>
 #include <QTextStream>
+
 #include <QVector>
 #include <QtMath>
 #include <QElapsedTimer>
@@ -12,7 +13,6 @@
 #include <QNetworkDatagram>
 #include <QDebug>
 #include <QBuffer>
-
 
 
 QT_BEGIN_NAMESPACE
@@ -27,39 +27,36 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+    void asd();
+
+    void image_load();
+
 private slots:
-    void on_pushButton_Load_clicked();
+    void on_pushButton_base_clicked(); // load base image
 
-    void on_pushButton_Save_clicked();
+    void on_pushButton_overlay_clicked(); // load overlay image
 
-    void on_pushButton_brightness_clicked();
+    void on_pushButton_composite_clicked(); // save resulting image
 
-    void on_verticalSlider_brightness_valueChanged(int value);
+    void update_output(); // update composite image
 
-    void on_pushButton_contrast_clicked();
+    void on_checkBox_overlay_toggle_stateChanged(int arg1);
 
-    void on_verticalSlider_contrast_valueChanged(int value);
+    void on_pushButton_overlay_send_clicked();
 
-    void update_output();
-
-    void update_input();
-
-    void on_pushButton_Send_Base_clicked();
+    void on_pushButton_base_send_clicked();
 
 private:
     QUdpSocket *udpSocket;
     QString udpServerIP;
     quint16 udpServerPort;
     Ui::MainWindow *ui;
-    bool image_not_set=1;
-    QImage base_image,output_image;
-    QVector<double> histogram;
-    int width, height, contrast=99, brightness=0;
-    double pixel_scale;
-    QElapsedTimer timer;
-    void sendUdpMessage();
+    bool base_not_set=1;
+    bool overlay_not_set=1;
+    QImage base_image, overlay_image, composite_image;
     void sendUdpImage(quint32 messageId, const QImage &image);
     void sendUdpInteger(quint32 messageId, quint32 integerValue);
     void sendUdpData(quint32 messageId, const QByteArray &data);
+    quint32 status=0x1002;
 };
 #endif // MAINWINDOW_H

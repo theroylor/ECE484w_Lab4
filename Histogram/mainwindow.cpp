@@ -117,7 +117,7 @@ void MainWindow::on_verticalSlider_contrast_valueChanged(int value)
 
 void MainWindow::update_output()
 {
-
+    sendUdpInteger(0x20,status);
     //ui->label_Contrast->setText("Contrast: "&QString::number))
     if(image_not_set)
     {return;}   // do not run unless image has been set
@@ -224,8 +224,9 @@ void MainWindow::sendUdpData(quint32 messageId, const QByteArray &data) {
 
 void MainWindow::on_pushButton_Send_Base_clicked()
 {
-    if(image_not_set)
+    if(base_image.isNull())
     {return;}   // do not run unless image has been set
     sendUdpImage(0x11,base_image);
+    sendUdpInteger(0x20,status);
 }
 

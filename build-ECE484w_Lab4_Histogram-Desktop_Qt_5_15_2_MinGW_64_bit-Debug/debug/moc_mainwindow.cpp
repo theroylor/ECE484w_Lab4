@@ -7,7 +7,7 @@
 *****************************************************************************/
 
 #include <memory>
-#include "../../ECE484w_Lab4_Qt/mainwindow.h"
+#include "../../Histogram/mainwindow.h"
 #include <QtCore/qbytearray.h>
 #include <QtCore/qmetatype.h>
 #if !defined(Q_MOC_OUTPUT_REVISION)
