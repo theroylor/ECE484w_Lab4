@@ -4,7 +4,7 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , udpSocket(new QUdpSocket(this))
-    , udpServerIP("192.168.1.9") // DE10’s IP address
+    , udpServerIP("192.168.1.255") // broadcast address
     , udpServerPort(5005)
     , ui(new Ui::MainWindow)
 {
@@ -228,7 +228,9 @@ void MainWindow::on_pushButton_Send_Base_clicked()
 {
     if(base_image.isNull())
     {return;}   // do not run unless image has been set
-    sendUdpImage(0x11,base_image);
+    sendUdpImage(0x13,base_image);
     sendUdpInteger(0x20,status);
+    sendUdpInteger(0x2B,brightness);
+    sendUdpInteger(0x2C,contrast);
 }
 

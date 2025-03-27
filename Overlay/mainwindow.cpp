@@ -4,7 +4,7 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , udpSocket(new QUdpSocket(this))
-    , udpServerIP("192.168.1.9") // DE10’s IP address
+    , udpServerIP("192.168.1.255") // broadcast address
     , udpServerPort(5005)
     , ui(new Ui::MainWindow)
 {
@@ -105,8 +105,8 @@ void MainWindow::update_output()
 
 void MainWindow::on_checkBox_overlay_toggle_stateChanged(int arg1)
 {
-    if (arg1){status = 0x1002;}
-    else {status = 0x1001;}
+    if (arg1){status = 0x10002;}
+    else {status = 0x10001;}
     sendUdpInteger(0x20,status);
 }
 

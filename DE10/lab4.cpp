@@ -10,12 +10,11 @@
 #include <unordered_map>
 
 
-cv::Mat imageBase, imageOverlay;
+cv::Mat imageBase, imageOverlay,imageHistogram;
 int32_t brightness=0,contrast=99;
 uint32_t command=0;
 double pixel_scale;
 std::string windowTitle = "Lab4 Output";
-int kWait = 75;
 
 struct Packet {
     uint32_t sequenceNumber;
@@ -25,6 +24,16 @@ struct Packet {
 };
 std::unordered_map<uint32_t, std::map<uint32_t, Packet>> messages;
 
+void displayImage(cv::Mat image){
+	int timeMult;
+	if (cv::getWindowProperty(windowTitle, cv::WND_PROP_VISIBLE) == -1){
+		timeMult = 20;
+	}
+	else {timeMult = 1;}
+	cv::imshow(windowTitle,image);
+	cv::waitKey(1*timeMult);
+}
+
 /**
  *	------------------------------------
  *	uses imageBase, imageOverlay
@@ -33,6 +42,7 @@ std::unordered_map<uint32_t, std::map<uint32_t, Packet>> messages;
 void OverlayImage(double alpha = 0.5)
 {
    if (imageBase.empty() || imageOverlay.empty()) {
+		cv::destroyWindow(windowTitle);
         std::cerr << "Error: Could not load one of the images!" << std::endl;
         return;
     }
@@ -53,8 +63,7 @@ void OverlayImage(double alpha = 0.5)
 	cv::addWeighted(croppedOverlay, alpha, roi, 1.0 - alpha, 0.0, roi);
 
     // Display the result
-    cv::imshow("Overlay Result", output);
-    cv::waitKey(kWait);
+	displayImage(output);
 }
 /**
  *	------------------------------------
@@ -67,19 +76,22 @@ void OverlayImage(double alpha = 0.5)
  */
 void EqualizeHistogram()
 {
-    if (imageBase.empty()) {
+    if (imageHistogram.empty()) {
+		cv::destroyWindow(windowTitle);
         std::cerr << "Error: Could not load image!" << std::endl;
         return;
     }
-	std::cout << "imageBase.channels() = " << imageBase.channels() << std::endl; 
+	std::cout << "imageHistogram.channels() = " << imageHistogram.channels() << std::endl; 
 	cv::Mat output;
 	std::cout << "cv::Mat output" << std::endl;
-	if(imageBase.channels() == 1){
-		cv::cvtColor(imageBase, output, cv::COLOR_GRAY2BGR);
+	/* this should never be invoked
+	if(imageHistogram.channels() == 3){
+		cv::cvtColor(imageHistogram, output, cv::COLOR_GRAY2BGR);
 	}
 	else{
-		output = imageBase.clone();
-	}
+		output = imageHistogram.clone();
+	} */
+	output = imageHistogram.clone();
 	
 	int rows = output.rows;
 	int cols = output.cols;
@@ -103,7 +115,7 @@ void EqualizeHistogram()
     {
         // resolve histogram equalization
         sum += histogram[i];
-		histogram[i]=brightness + sum * contrast * 1.0 / cols / rows;
+		histogram[i]=brightness + sum * contrast * pixel_scale;
     }
 
 	for (int x = 0; x < cols; x++) {
@@ -117,9 +129,7 @@ void EqualizeHistogram()
 	}
 
     // display file
-//	cv::destroyAllWindows();
-	cv::imshow(windowTitle, output);
-    cv::waitKey(kWait);
+	displayImage(output);
 }
 
 
@@ -172,25 +182,39 @@ int32_t constructInt32_t(std::vector<char> data)
  *	0x2001 is modeBrightnessContrast
  *	------------------------------------
  */
-
+ bool isSameCommandMSB(uint32_t num1, uint32_t num2) {
+    // Extract the most significant byte (MSB) of each number
+    uint16_t msb1 = num1 >> 16; // Right-shift to isolate MSB
+    uint16_t msb2 = num2 >> 16;
+	std::cout << std::hex << "Are the MSBs of 0x" << num1 << " and 0x" << num2 << " equal?" << std::dec << std::endl; 
+	std::cout << std::hex << "msb1 = 0x" << msb1 << ", msb2 = 0X" << msb2 << std::dec << std::endl;
+    // Compare the msbs
+	bool output = msb1 == msb2;
+	std::cout << "msb1 == msb2: " << output << std::endl;
+    return output;
+}
 void updateOutput()
 {
 	switch(command){
-		case 0x1001:
+		case 0x10001:
 		std::cout << "In command case 0x1001: No Overlay" << std::endl;
 		OverlayImage(0);
 		break;
-		case 0x1002:
+		case 0x10002:
 		std::cout << "In command case 0x1002: Overlay" << std::endl;
 		OverlayImage();
 		break;
-		case 0x2001:
+		case 0x20001:
 		std::cout << "In command case 0x2001: Histogram Equalization" << std::endl;
 		EqualizeHistogram();
 		break;
 	}
 }
 void setMode(uint32_t data){
+	if(!isSameCommandMSB(data,command)){
+		cv::destroyWindow(windowTitle);
+		cv::waitKey(100);
+	}
 	command = data;
 	std::cout << "Set mode = 0x" << std::hex << data << std::dec << std::endl;
 	updateOutput();
@@ -206,15 +230,21 @@ void setContrast(uint32_t data){
 	updateOutput();
 }
 void setImageBase(cv::Mat image){
-	cv::destroyAllWindows();
+	//cv::destroyAllWindows();
 	imageBase = image;
-	std::cout << "Base image rows, cols = " << imageBase.rows << ", " << imageBase.cols << std::endl;
+	std::cout << "Base image rows, cols = " << image.rows << ", " << image.cols << std::endl;
 	updateOutput();
 }
 void setImageOverlay(cv::Mat image){
 	//cv::destroyAllWindows();
 	imageOverlay = image;
-	std::cout << "Base image rows, cols = " << image.rows << ", " << image.cols << std::endl;
+	std::cout << "Overlay image rows, cols = " << image.rows << ", " << image.cols << std::endl;
+	updateOutput();
+}
+void setImageHistogram(cv::Mat image){
+	//cv::destroyAllWindows();
+	imageHistogram = image;
+	std::cout << "Histogram image rows, cols = " << image.rows << ", " << image.cols << std::endl;
 	updateOutput();
 }
 bool isMessageComplete(uint32_t messageID){
@@ -237,6 +267,9 @@ void sortMessages(uint32_t messageID){
 			break;
 			case 0x12:
 			setImageOverlay(constructGrayscaleImage(getCompleteMessage(messageID)));
+			break;
+			case 0x13:
+			setImageHistogram(constructGrayscaleImage(getCompleteMessage(messageID)));
 			break;
 			case 0x20:
 			setMode(constructInt32_t(getCompleteMessage(messageID)));
