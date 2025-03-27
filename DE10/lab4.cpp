@@ -30,7 +30,7 @@ std::unordered_map<uint32_t, std::map<uint32_t, Packet>> messages;
  *	uses imageBase, imageOverlay
  *	overlays 
  */	
-void OverlayImage()
+void OverlayImage(double alpha = 0.5)
 {
    if (imageBase.empty() || imageOverlay.empty()) {
         std::cerr << "Error: Could not load one of the images!" << std::endl;
@@ -48,9 +48,6 @@ void OverlayImage()
 
     // Define ROI on the base image
     cv::Mat roi = output(cv::Rect(0, 0, cols, rows));
-	
-	// set alpha
-	double alpha = 0.5;
     
 	// Apply the overlay to the ROI
 	cv::addWeighted(croppedOverlay, alpha, roi, 1.0 - alpha, 0.0, roi);
@@ -181,8 +178,7 @@ void updateOutput()
 	switch(command){
 		case 0x1001:
 		std::cout << "In command case 0x1001: No Overlay" << std::endl;
-//		cv::destroyAllWindows();
-		cv::imshow(windowTitle, imageBase);
+		OverlayImage(0);
 		break;
 		case 0x1002:
 		std::cout << "In command case 0x1002: Overlay" << std::endl;
