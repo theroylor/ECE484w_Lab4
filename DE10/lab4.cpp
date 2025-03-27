@@ -15,6 +15,7 @@ int32_t brightness=0,contrast=99;
 uint32_t command=0;
 double pixel_scale;
 std::string windowTitle = "Lab4 Output";
+int kWait = 75;
 
 struct Packet {
     uint32_t sequenceNumber;
@@ -31,25 +32,32 @@ std::unordered_map<uint32_t, std::map<uint32_t, Packet>> messages;
  */	
 void OverlayImage()
 {
-    if (imageBase.empty() || imageOverlay.empty()) {
+   if (imageBase.empty() || imageOverlay.empty()) {
         std::cerr << "Error: Could not load one of the images!" << std::endl;
         return;
     }
+	
 	// do not modify output and overlay
 	cv::Mat output = imageBase.clone();
 	cv::Mat overlay = imageOverlay.clone();
-		
-	// crop overlay if larger than base
-	int rows = std::min(output.rows, overlay.rows);
-	int cols = std::min(output.cols, overlay.cols);
-	overlay = overlay(cv::Rect(0, 0, cols, rows));
+
+    // crop overlay if larger than base
+    int rows = std::min(output.rows, overlay.rows);
+    int cols = std::min(output.cols, overlay.cols);
+    cv::Mat croppedOverlay = overlay(cv::Rect(0, 0, cols, rows));
+
+    // Define ROI on the base image
+    cv::Mat roi = output(cv::Rect(0, 0, cols, rows));
 	
-	// select overlay region of base image
-	output = output(cv::Rect(0, 0, cols, rows));
-	int alpha = 1; // just slap the overlay on top
-	cv::addWeighted(overlay, alpha, output, 1.0 - alpha, 0.0, output);
-	cv::imshow(windowTitle, output);
-    cv::waitKey(0);
+	// set alpha
+	double alpha = 0.5;
+    
+	// Apply the overlay to the ROI
+	cv::addWeighted(croppedOverlay, alpha, roi, 1.0 - alpha, 0.0, roi);
+
+    // Display the result
+    cv::imshow("Overlay Result", output);
+    cv::waitKey(kWait);
 }
 /**
  *	------------------------------------
@@ -66,8 +74,15 @@ void EqualizeHistogram()
         std::cerr << "Error: Could not load image!" << std::endl;
         return;
     }
+	std::cout << "imageBase.channels() = " << imageBase.channels() << std::endl; 
 	cv::Mat output;
-    cv::cvtColor(imageBase, output, cv::COLOR_BGR2GRAY);
+	std::cout << "cv::Mat output" << std::endl;
+	if(imageBase.channels() == 1){
+		cv::cvtColor(imageBase, output, cv::COLOR_GRAY2BGR);
+	}
+	else{
+		output = imageBase.clone();
+	}
 	
 	int rows = output.rows;
 	int cols = output.cols;
@@ -105,8 +120,9 @@ void EqualizeHistogram()
 	}
 
     // display file
+//	cv::destroyAllWindows();
 	cv::imshow(windowTitle, output);
-    cv::waitKey(0);
+    cv::waitKey(kWait);
 }
 
 
@@ -124,6 +140,7 @@ std::vector<char> getCompleteMessage(uint32_t messageID) {
 		const auto& packet = pair.second;
 		completeData.insert(completeData.end(), packet.data.begin(), packet.data.end());
 	}
+	
 
     // Free memory by erasing the entry
     messages.erase(messageID);
@@ -141,8 +158,8 @@ cv::Mat constructGrayscaleImage(std::vector<char> data)
 }
 int32_t constructInt32_t(std::vector<char> data)
 {
-	if (data.size() == sizeof(int32_t)) {
-        throw std::runtime_error("Incorrect data size for int32_t.Data size: " + std::to_string(data.size()) + " Expected: 4");
+	if (data.size() != sizeof(int32_t)) {
+        throw std::runtime_error("Incorrect data size for int32_t.Data size: " + std::to_string(data.size()) + ". Expected: 4");
     }
 	int32_t value;
     std::memcpy(&value, data.data(), sizeof(int32_t));
@@ -163,55 +180,59 @@ void updateOutput()
 {
 	switch(command){
 		case 0x1001:
+		std::cout << "In command case 0x1001: No Overlay" << std::endl;
+//		cv::destroyAllWindows();
 		cv::imshow(windowTitle, imageBase);
 		break;
 		case 0x1002:
+		std::cout << "In command case 0x1002: Overlay" << std::endl;
 		OverlayImage();
 		break;
 		case 0x2001:
+		std::cout << "In command case 0x2001: Histogram Equalization" << std::endl;
 		EqualizeHistogram();
 		break;
 	}
 }
 void setMode(uint32_t data){
 	command = data;
+	std::cout << "Set mode = 0x" << std::hex << data << std::dec << std::endl;
 	updateOutput();
 }
 void setBrightness(uint32_t data){
 	brightness = data;
+	std::cout << "Set brightness = " << (int)data << std::endl;
 	updateOutput();
 }
 void setContrast(uint32_t data){
 	contrast = data;
+	std::cout << "Set contrast = " << (int)data << std::endl;
 	updateOutput();
 }
 void setImageBase(cv::Mat image){
+	cv::destroyAllWindows();
 	imageBase = image;
+	std::cout << "Base image rows, cols = " << imageBase.rows << ", " << imageBase.cols << std::endl;
 	updateOutput();
 }
 void setImageOverlay(cv::Mat image){
+	//cv::destroyAllWindows();
 	imageOverlay = image;
+	std::cout << "Base image rows, cols = " << image.rows << ", " << image.cols << std::endl;
 	updateOutput();
-}
-void storePacket(uint32_t messageID, const Packet& packet) {
-    // Access the map for the given messageID (creates one if it doesn't exist)
-    auto& packets = messages[messageID];
-
-    // Store the packet indexed by its sequenceNumber
-    packets[packet.sequenceNumber] = packet;
 }
 bool isMessageComplete(uint32_t messageID){
 	// Get the inner map for the message
     auto& packets = messages[messageID];
-	
+	std::cout << "MessageID: " << messageID << std::endl;
+	std::cout << "packet.size() = " << packets.size() << ".  packets.begin()->second.totalChunks = " <<  packets.begin()->second.totalChunks << "." << std::endl;
 	// Check that packets.size() == totalChunks;
 	if (!packets.empty()) {
         return packets.size() == packets.begin()->second.totalChunks;
     }
 	return false;
 }
-void sortMessages(uint32_t messageID, Packet packet){
-	storePacket(messageID,packet);
+void sortMessages(uint32_t messageID){
 	if(isMessageComplete(messageID))
 	{
 		switch(messageID){
@@ -236,10 +257,6 @@ void sortMessages(uint32_t messageID, Packet packet){
 		}
 	}
 }
-
-
-
-
 
 /**
  *
@@ -269,6 +286,9 @@ void storeBufferAsPacket(const char* charArray, size_t arraySize = 1024) {
     //Create the Packet
     Packet packet = {sequenceNumber, totalChunks, data};
     messages[messageID][sequenceNumber] = packet;
+	std::cout << "Recieved ID: " << messageID << "; Sequence " << sequenceNumber << " of " << totalChunks << ". " << dataSize << " bytes." << std::endl;
+
+	sortMessages(messageID);
 }
 
 /**

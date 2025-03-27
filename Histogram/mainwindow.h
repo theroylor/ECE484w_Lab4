@@ -12,6 +12,7 @@
 #include <QNetworkDatagram>
 #include <QDebug>
 #include <QBuffer>
+#include <QThread>
 
 
 
@@ -62,5 +63,6 @@ private:
     void sendUdpInteger(quint32 messageId, quint32 integerValue);
     void sendUdpData(quint32 messageId, const QByteArray &data);
     quint32 status=0x2001;
+    int packetSize = 1024, headerSize=16;
 };
 #endif // MAINWINDOW_H

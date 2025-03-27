@@ -201,7 +201,7 @@ void MainWindow::sendUdpData(quint32 messageId, const QByteArray &data) {
         return;
     }
 
-    const int chunkSize = 1012; // 12 bytes for headers, remaining for data
+    const int chunkSize = packetSize-headerSize;
     int totalChunks = (data.size() + chunkSize - 1) / chunkSize; // Calculate total chunks
 
     for (int i = 0; i < totalChunks; ++i) {
@@ -217,8 +217,10 @@ void MainWindow::sendUdpData(quint32 messageId, const QByteArray &data) {
 
         udpSocket->writeDatagram(chunkPacket, QHostAddress(udpServerIP), udpServerPort);
 
-        qDebug() << "Chunk" << i + 1 << "of" << totalChunks << "sent for Message ID:" << messageId;
+        qDebug() << chunkPacket.size() << "bytes in packet. Chunk" << i + 1 << "of" << totalChunks << "sent for Message ID:" << messageId;
         qDebug() << "First byte of data in chunk: " << data.mid(i * chunkSize, 1).toHex();
+        QThread::msleep(10);
+
     }
 }
 
